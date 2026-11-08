@@ -59,6 +59,7 @@ class ChatRequest(BaseModel):
     developer_name: str = Field(min_length=1, max_length=80)
     persona: str
     question: str = Field(min_length=1, max_length=4000)
+    workspace_files: dict[str, str] = Field(default_factory=dict, max_length=5)
 
 class ChatResponse(BaseModel):
     answer: str
@@ -222,7 +223,13 @@ async def chat(payload: ChatRequest):
 
         # Required sequence: recall first, then ask Groq with recalled memories.
         memories = await run_in_threadpool(recall_memories, bank_id, question)
-        code_files = select_relevant_files(question)
+        code_files = {}
+        for file_name, content in payload.workspace_files.items():
+            safe_name = Path(file_name).name
+            if safe_name and "\x00" not in content:
+                code_files[safe_name[:120]] = str(content)[:20_000]
+        if not code_files:
+            code_files = select_relevant_files(question)
         system_prompt = build_system_prompt(persona, memories, code_files)
         result = await run_in_threadpool(call_groq, system_prompt, question)
 

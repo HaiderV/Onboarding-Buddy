@@ -1,0 +1,48 @@
+{
+  "name": "onboarding-buddy",
+  "displayName": "Onboarding Buddy",
+  "description": "Persistent AI mentor grounded in your VS Code workspace.",
+  "version": "0.1.0",
+  "publisher": "onboarding-buddy",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Education"],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "onboardingBuddy",
+          "title": "Onboarding Buddy",
+          "icon": "$(book)"
+        }
+      ]
+    },
+    "views": {
+      "onboardingBuddy": [
+        {
+          "type": "webview",
+          "id": "onboardingBuddy.chat",
+          "name": "Mentor"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "onboardingBuddy.open",
+        "title": "Onboarding Buddy: Open Mentor"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.4"
+  }
+}
