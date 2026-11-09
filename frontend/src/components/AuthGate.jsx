@@ -12,6 +12,7 @@ import {
   Terminal,
 } from "lucide-react";
 import Logo from "./Logo";
+import { apiFetch, apiUrl } from "../api";
 
 const PRESETS = ["Alex (Frontend)", "Sarah (Backend)", "Jordan (Lead)"];
 
@@ -29,7 +30,7 @@ export default function AuthGate({ onAuthSuccess, providersInfo }) {
   const [error, setError] = useState(null);
 
   const handleGitHubOAuth = () => {
-    window.location.href = "/api/auth/github/login";
+    window.location.href = apiUrl("/api/auth/github/login");
   };
 
   const handleTokenLogin = async (e) => {
@@ -41,7 +42,7 @@ export default function AuthGate({ onAuthSuccess, providersInfo }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/token-login", {
+      const res = await apiFetch("/api/auth/token-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: token.trim() }),
@@ -65,7 +66,7 @@ export default function AuthGate({ onAuthSuccess, providersInfo }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/dev-login", {
+      const res = await apiFetch("/api/auth/dev-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ developer_name: devName.trim() }),

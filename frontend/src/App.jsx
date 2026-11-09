@@ -3,6 +3,7 @@ import AuthGate from "./components/AuthGate";
 import Dashboard from "./components/Dashboard";
 import Logo from "./components/Logo";
 import useTheme from "./useTheme";
+import { apiFetch } from "./api";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -21,7 +22,7 @@ export default function App() {
   const checkAuth = async () => {
     setIsCheckingAuth(true);
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await apiFetch("/api/auth/me");
       const data = await res.json();
       if (data.authenticated && data.user) {
         setCurrentUser(data.user);
@@ -38,7 +39,7 @@ export default function App() {
 
   const fetchProviders = async () => {
     try {
-      const res = await fetch("/api/auth/providers");
+      const res = await apiFetch("/api/auth/providers");
       if (res.ok) setProvidersInfo(await res.json());
     } catch {
       // Ignored
@@ -47,7 +48,7 @@ export default function App() {
 
   const fetchHealth = async () => {
     try {
-      const res = await fetch("/api/health");
+      const res = await apiFetch("/api/health");
       if (res.ok) setHealthInfo(await res.json());
     } catch {
       // Ignored
@@ -56,7 +57,7 @@ export default function App() {
 
   const loadDashboard = async () => {
     try {
-      const res = await fetch("/api/dashboard");
+      const res = await apiFetch("/api/dashboard");
       if (res.ok) setDashboardData(await res.json());
     } catch {
       // Ignored
@@ -65,7 +66,7 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST" });
+      await apiFetch("/api/auth/logout", { method: "POST" });
     } catch {
       // Ignored
     }

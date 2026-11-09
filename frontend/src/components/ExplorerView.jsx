@@ -13,6 +13,7 @@ import {
   Trash2,
   Loader2,
 } from "lucide-react";
+import { apiFetch } from "../api";
 
 export default function ExplorerView({ activeProject, projects = [], onSelectProject, onRefreshProjects }) {
   const [files, setFiles] = useState({});
@@ -38,7 +39,7 @@ export default function ExplorerView({ activeProject, projects = [], onSelectPro
     setSelectedFile(null);
 
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/files`);
+      const res = await apiFetch(`/api/projects/${encodeURIComponent(projectId)}/files`);
       if (res.ok) {
         const data = await res.json();
         const rawFiles = data.files || {};
@@ -92,7 +93,7 @@ export default function ExplorerView({ activeProject, projects = [], onSelectPro
 
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
+      const res = await apiFetch(`/api/projects/${encodeURIComponent(projectId)}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -164,7 +165,7 @@ export default function ExplorerView({ activeProject, projects = [], onSelectPro
         return;
       }
 
-      const res = await fetch("/api/projects/sync", {
+      const res = await apiFetch("/api/projects/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -11,12 +11,15 @@ import {
   Cpu,
   RotateCcw,
   BookOpen,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from "lucide-react";
+import { apiFetch } from "../api";
 
 export default function LearningHubView({ user, onSelectQuestion, onGoToQuiz, onBackToChat }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchHubData();
@@ -24,14 +27,18 @@ export default function LearningHubView({ user, onSelectQuestion, onGoToQuiz, on
 
   const fetchHubData = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch("/api/learning-hub");
+      const res = await apiFetch("/api/learning-hub");
       if (res.ok) {
         const json = await res.json();
         setData(json);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        setError(errJson.detail || "Unable to fetch Learning Hub data.");
       }
-    } catch {
-      // Ignored
+    } catch (err) {
+      setError(err.message || "Failed to connect to Learning Hub endpoint.");
     } finally {
       setLoading(false);
     }
@@ -87,6 +94,24 @@ export default function LearningHubView({ user, onSelectQuestion, onGoToQuiz, on
         </div>
       </header>
 
+      {error && (
+        <div style={{
+          padding: "10px 14px",
+          borderRadius: "8px",
+          background: "rgba(239, 68, 68, 0.1)",
+          border: "1px solid rgba(239, 68, 68, 0.3)",
+          color: "#f87171",
+          fontSize: "0.84rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          marginBottom: "1.25rem"
+        }}>
+          <AlertCircle size={16} />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Overview Stats Bar */}
       <div style={{
         display: "grid",
@@ -101,7 +126,7 @@ export default function LearningHubView({ user, onSelectQuestion, onGoToQuiz, on
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981" }} />
             <strong style={{ fontSize: "0.95rem", color: "#3b82f6", fontFamily: "var(--font-mono)" }}>
-              {data?.dev_bank_id || "dev-user"}
+              {data?.dev_bank_id || (user ? `developer-${(user.name || user.login || "user").toLowerCase().replace(/[^a-z0-9]/g, "-")}` : "developer-user")}
             </strong>
           </div>
           <span style={{ fontSize: "0.72rem", color: "var(--ink-2)", marginTop: "4px", display: "block" }}>

@@ -16,6 +16,7 @@ import QuizView from "./QuizView";
 import ExplorerView from "./ExplorerView";
 import LearningHubView from "./LearningHubView";
 import Logo from "./Logo";
+import { apiFetch } from "../api";
 
 const NAV = [
   { id: "chat", label: "Mentor Chat", icon: MessageSquare },
@@ -95,7 +96,7 @@ export default function Dashboard({
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/chat", {
+      const res = await apiFetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

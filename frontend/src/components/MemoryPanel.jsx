@@ -11,6 +11,7 @@ import {
   X,
   Loader2,
 } from "lucide-react";
+import { apiFetch } from "../api";
 
 export default function MemoryPanel({
   bankId,
@@ -41,7 +42,7 @@ export default function MemoryPanel({
 
     setDeletingId(project.project_id);
     try {
-      const res = await fetch(`/api/projects/${encodeURIComponent(project.project_id)}`, {
+      const res = await apiFetch(`/api/projects/${encodeURIComponent(project.project_id)}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -115,7 +116,7 @@ export default function MemoryPanel({
         return;
       }
 
-      const res = await fetch("/api/projects/sync", {
+      const res = await apiFetch("/api/projects/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

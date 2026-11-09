@@ -10,6 +10,7 @@ import {
   ArrowRight,
   Award
 } from "lucide-react";
+import { apiFetch } from "../api";
 
 export default function QuizView({ activeProject, onQuizCompleted }) {
   const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ export default function QuizView({ activeProject, onQuizCompleted }) {
     setSavedToMemory(false);
 
     try {
-      const res = await fetch("/api/quiz/generate", {
+      const res = await apiFetch("/api/quiz/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -74,7 +75,7 @@ export default function QuizView({ activeProject, onQuizCompleted }) {
 
     // Retain quiz result in Hindsight memory
     try {
-      await fetch("/api/quiz/submit", {
+      await apiFetch("/api/quiz/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
