@@ -22,6 +22,16 @@ export default function App() {
   const checkAuth = async () => {
     setIsCheckingAuth(true);
     try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlSession = urlParams.get("session_token");
+      if (urlSession) {
+        localStorage.setItem("ob_session", urlSession);
+        urlParams.delete("session_token");
+        const newSearch = urlParams.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "") + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+
       const res = await apiFetch("/api/auth/me");
       const data = await res.json();
       if (data.authenticated && data.user) {
@@ -70,6 +80,7 @@ export default function App() {
     } catch {
       // Ignored
     }
+    localStorage.removeItem("ob_session");
     setCurrentUser(null);
     setDashboardData(null);
   };

@@ -7,10 +7,17 @@ export function apiUrl(path) {
 }
 
 export function apiFetch(path, options = {}) {
+  const token = typeof window !== "undefined" ? localStorage.getItem("ob_session") : null;
+  const headers = { ...options.headers };
+  if (token && !headers["X-Session-Token"]) {
+    headers["X-Session-Token"] = token;
+  }
   return fetch(apiUrl(path), {
     ...options,
+    headers,
     credentials: options.credentials || "include",
   });
 }
 
 export default apiFetch;
+

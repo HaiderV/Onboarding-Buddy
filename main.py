@@ -208,23 +208,43 @@ async def save_github_user(profile: dict[str, Any]) -> dict[str, Any]:
 
 
 async def profile_from_request(request: Request) -> dict[str, Any] | None:
+    session_token = request.headers.get("x-session-token") or request.cookies.get("ob_session")
+    if session_token and mongo_db is not None:
+        try:
+            session = await mongo_db["sessions"].find_one({"token": session_token})
+            if session:
+                user = await mongo_db["users"].find_one(
+                    {"github_id": session["github_id"]},
+                    {"_id": 0},
+                )
+                if user:
+                    return user
+        except Exception:
+            pass
+
     authorization = request.headers.get("authorization")
     if authorization and authorization.startswith("Bearer "):
-        profile = await verify_github_user(authorization)
-        await save_github_user(profile)
-        return profile
+        token = authorization.removeprefix("Bearer ").strip()
+        if mongo_db is not None:
+            try:
+                session = await mongo_db["sessions"].find_one({"token": token})
+                if session:
+                    user = await mongo_db["users"].find_one(
+                        {"github_id": session["github_id"]},
+                        {"_id": 0},
+                    )
+                    if user:
+                        return user
+            except Exception:
+                pass
+        try:
+            profile = await verify_github_user(authorization)
+            await save_github_user(profile)
+            return profile
+        except Exception:
+            return None
 
-    session_token = request.cookies.get("ob_session")
-    if not session_token or mongo_db is None:
-        return None
-    session = await mongo_db["sessions"].find_one({"token": session_token})
-    if not session:
-        return None
-    user = await mongo_db["users"].find_one(
-        {"github_id": session["github_id"]},
-        {"_id": 0},
-    )
-    return user
+    return None
 
 
 def make_bank_id(developer_name: str) -> str:
@@ -680,7 +700,9 @@ async def github_callback(
             "created_at": datetime.now(timezone.utc),
         })
 
-        response = RedirectResponse(url=target_url, status_code=302)
+        sep = "&" if "?" in target_url else "?"
+        redirect_url = f"{target_url}{sep}session_token={session_token}"
+        response = RedirectResponse(url=redirect_url, status_code=302)
         set_session_cookie(response, session_token)
         return response
 
@@ -707,7 +729,7 @@ async def token_login(payload: TokenLoginRequest, response: Response):
         "created_at": datetime.now(timezone.utc),
     })
     set_session_cookie(response, session_token)
-    return {"authenticated": True, "user": profile}
+    return {"authenticated": True, "user": profile, "session_token": session_token}
 
 
 @app.post("/api/auth/dev-login")
@@ -735,12 +757,12 @@ async def dev_login(payload: DevLoginRequest, response: Response):
         "created_at": datetime.now(timezone.utc),
     })
     set_session_cookie(response, session_token)
-    return {"authenticated": True, "user": profile}
+    return {"authenticated": True, "user": profile, "session_token": session_token}
 
 
 @app.post("/api/auth/logout")
 async def github_logout(request: Request, response: Response):
-    session_token = request.cookies.get("ob_session")
+    session_token = request.headers.get("x-session-token") or request.cookies.get("ob_session")
     if session_token and mongo_db is not None:
         await mongo_db["sessions"].delete_one({"token": session_token})
     delete_session_cookie(response)

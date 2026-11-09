@@ -49,6 +49,9 @@ export default function AuthGate({ onAuthSuccess, providersInfo }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Authentication failed");
+      if (data.session_token) {
+        localStorage.setItem("ob_session", data.session_token);
+      }
       onAuthSuccess(data.user);
     } catch (err) {
       setError(err.message);
@@ -73,6 +76,9 @@ export default function AuthGate({ onAuthSuccess, providersInfo }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Dev sign-in failed");
+      if (data.session_token) {
+        localStorage.setItem("ob_session", data.session_token);
+      }
       onAuthSuccess(data.user);
     } catch (err) {
       setError(err.message);
