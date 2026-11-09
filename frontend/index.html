@@ -1,80 +1,15 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Onboarding Buddy</title>
-  <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-mark">OB</div>
-      <div>
-        <h1>Onboarding Buddy</h1>
-        <p>Your AI codebase mentor</p>
-      </div>
-      <span class="status"><i></i> Ready to help</span>
-    </header>
-
-    <main class="layout">
-      <section class="chat-card">
-        <div class="intro">
-          <span class="eyebrow">DEVELOPER LEARNING SPACE</span>
-          <h2>Understand the codebase, one question at a time.</h2>
-          <p>Ask about the sample project. Your Buddy remembers what you've learned.</p>
-        </div>
-
-        <div class="controls">
-          <label>Developer name
-            <input id="developerName" placeholder="e.g. Alex" maxlength="80">
-          </label>
-          <label>Teaching persona
-            <select id="persona">
-              <option>Friendly Mentor</option>
-              <option>Strict Senior</option>
-              <option>Explain-like-I'm-5</option>
-            </select>
-          </label>
-        </div>
-
-        <div id="chatWindow" class="chat-window" aria-live="polite">
-          <div class="message assistant">
-            <div class="avatar">OB</div>
-            <div class="bubble">
-              <strong>Welcome!</strong>
-              <p>I'm your Onboarding Buddy. Ask me how authentication, payments, or the database works.</p>
-            </div>
-          </div>
-        </div>
-
-        <form id="chatForm" class="composer">
-          <textarea id="question" rows="2" placeholder="Ask a question about the codebase..." required></textarea>
-          <button id="sendButton" type="submit">Send <span>➜</span></button>
-        </form>
-        <p class="hint">Try: “How does JWT authentication work in this project?”</p>
-      </section>
-
-      <aside class="memory-card">
-        <div class="memory-heading">
-          <div class="brain-icon">✦</div>
-          <div><h3>What I know about you</h3><p>Recalled from your Hindsight memory bank</p></div>
-        </div>
-        <div id="memoryList" class="memory-list">
-          <div class="empty-state">Your learning memories will appear here after you ask a question.</div>
-        </div>
-        <div class="memory-footer">
-          <span class="pulse"></span>
-          <span id="bankLabel">No developer selected</span>
-        </div>
-        <div class="files-used">
-          <h4>Files used for latest answer</h4>
-          <div id="filesList" class="file-chips">None yet</div>
-        </div>
-      </aside>
-    </main>
-    <footer>Onboarding Buddy <span>•</span> FastAPI + Groq + Hindsight</footer>
-  </div>
-  <script src="/static/app.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Onboarding Buddy — AI Developer Mentor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
 </html>

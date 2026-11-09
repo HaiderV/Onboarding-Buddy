@@ -1,108 +1,109 @@
 # Onboarding Buddy
 
-A beginner-friendly codebase mentor built with FastAPI, plain HTML/CSS/JavaScript, Groq, and Hindsight persistent memory.
+An AI-powered developer onboarding mentor with persistent Hindsight memory, MongoDB Atlas repository synchronization, adaptive teaching personas, and a modern Vite + React developer interface.
 
-## Features
+---
 
-- Developer name selects a separate Hindsight memory bank.
-- Three teaching personas: Friendly Mentor, Strict Senior, and Explain-like-I'm-5.
-- Recalls relevant memories before every answer.
-- Passes recalled memories and selected sample code files to Groq.
-- Retains a structured learning summary after every answer.
-- Displays recalled memories and source files in the UI.
-- Includes a seed script for a demo developer.
+## What's New in v1.2
 
-## Project structure
+- **Strict Dashboard Authentication Gate:** The workspace dashboard, chat mentor, and synced code files are completely protected. Unauthenticated visitors cannot enter or use the dashboard without signing in.
+- **Modern Vite + React Workspace:** Modern dark theme interface with syntax-highlighted code blocks, one-click copy buttons, rich Markdown rendering, and prompt recommendation pills.
+- **Multi-Option Sign-In:**
+  1. **GitHub OAuth:** Official GitHub sign-in flow.
+  2. **GitHub Personal Access Token (PAT):** Instant verification directly with the GitHub API—ideal when an OAuth application is not yet registered.
+  3. **Dev Quick Sign-in:** One-click workspace login for rapid local development and testing.
+- **Dynamic Multi-Project Retrieval:** Automatically retrieves context files from your synced repositories stored in MongoDB Atlas, rather than only falling back to sample files.
+- **Resilient Memory Engine:** Hindsight recall and retain operations handle transient network latency gracefully without breaking conversations.
+- **Enhanced VS Code Extension:** Supports workspace project syncing to MongoDB, rich Markdown formatting, and custom teaching personas.
+
+---
+
+## Project Structure
 
 ```text
 Onboarding-Buddy/
-├── main.py
-├── seed.py
-├── requirements.txt
-├── .env
+├── main.py                    # FastAPI server (API, Auth, Groq, Hindsight, MongoDB, SPA host)
+├── seed.py                    # Demo developer memory bank seeder
+├── requirements.txt           # Python dependencies
+├── .env                       # Environment variables (Groq, Hindsight, MongoDB, GitHub OAuth)
 ├── .env.example
-├── .gitignore
-├── README.md
-├── frontend/
-│   ├── index.html
-│   ├── style.css
-│   └── app.js
-└── sample_repo/
-    ├── auth.py
-    ├── payments.py
-    ├── database.py
-    ├── middleware.py
-    └── config.py
+├── frontend/                  # Modern Vite + React frontend
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── AuthGate.jsx   # Strict login and landing view
+│   │   │   ├── Dashboard.jsx  # Authenticated developer workspace
+│   │   │   ├── ChatArea.jsx   # Markdown chat & code block viewer
+│   │   │   └── MemoryPanel.jsx# Hindsight memory cards & synced projects
+│   │   ├── App.jsx
+│   │   └── index.css
+│   ├── dist/                  # Production build served directly by FastAPI
+│   ├── package.json
+│   └── vite.config.js
+├── sample_repo/               # Built-in fallback Python modules
+└── extension/                 # VS Code Extension
+    ├── src/extension.ts
+    └── package.json
 ```
 
-## Setup
+---
 
-### 1. Create a virtual environment
+## Quick Start
 
-Windows PowerShell:
+### 1. Backend Setup
 
 ```powershell
+cd Onboarding-Buddy
 py -m venv .venv
 .venv\Scripts\Activate.ps1
-```
-
-### 2. Install dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure environment variables
-
-Copy `.env.example` to `.env`, then add your own API keys:
+Ensure your `.env` contains:
 
 ```env
 GROQ_API_KEY=your_groq_api_key
 GROQ_MODEL=openai/gpt-oss-120b
+
 HINDSIGHT_API_KEY=your_hindsight_api_key
 HINDSIGHT_BASE_URL=https://api.hindsight.vectorize.io
+
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?retryWrites=true&w=majority
+MONGODB_DB_NAME=onboarding_buddy
+
+# Optional: Add for GitHub OAuth (or use PAT / Dev Login)
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+GITHUB_REDIRECT_URI=http://127.0.0.1:8000/api/auth/github/callback
+
 PORT=8000
 ```
 
-Never commit `.env` or share API keys.
+### 2. Run the Application
 
-### 4. Seed the demo developer (optional)
-
-```bash
-python seed.py
-```
-
-This creates or uses the `developer-demo-developer` bank and adds three example learning memories. In the UI, enter `Demo Developer` to use that bank.
-
-### 5. Start the application
-
-```bash
+```powershell
+# From Onboarding-Buddy directory:
 uvicorn main:app --reload --port 8000
 ```
 
-Open http://127.0.0.1:8000 in your browser.
+Open `http://127.0.0.1:8000` in your browser.
 
-## How Hindsight is used
+- You will be greeted by the **Auth Gate**.
+- Choose **GitHub OAuth**, **Token (PAT)**, or **Dev Quick Login**.
+- Once authenticated, you will enter the **Workspace Dashboard** with interactive mentor chat, Hindsight persistent memory, and synced project files!
 
-Hindsight provides persistent, developer-specific learning memory.
+### 3. Frontend Development (Optional)
 
-1. **One bank per developer:** the developer name is normalized into a stable bank ID such as `developer-alex`. Different developers therefore have isolated memory.
-2. **Recall before answering:** before every Groq request, the backend calls `client.recall(bank_id=..., query=question)`. The recalled facts are inserted into the system prompt.
-3. **Memory-aware teaching:** the system prompt instructs the model to use only recalled memories as learning history and not to re-explain concepts already learned unless the developer asks for a refresher.
-4. **Retain after answering:** after a successful answer, the backend calls `client.retain()` with a structured summary containing the explained module, concepts taught, confusion reported by the developer, and selected persona.
-5. **Visible memory:** the backend recalls again after retaining and returns those memories to the side panel.
+If modifying the frontend:
 
-Hindsight is used for memory storage and retrieval; Groq is used to generate the explanation. The sample application does not ask Hindsight to generate the answer.
+```powershell
+cd frontend
+npm run dev     # Starts Vite dev server with proxy to FastAPI on port 5173
+npm run build   # Compiles to frontend/dist (auto-served by FastAPI at port 8000)
+```
 
-## Sample codebase retrieval
+### 4. VS Code Extension
 
-The sample repository contains five small Python modules. A simple keyword-based selector chooses up to three relevant files for each question. If no keywords match, it provides the authentication and database modules as a useful default. This is intentionally simple and can later be replaced with embeddings or a code search index.
-
-## Notes and limitations
-
-- The sample code is educational, not production authentication or payment code.
-- The demo token implementation is deliberately simplified and is not a real JWT implementation.
-- Developer names are converted to lowercase URL-safe bank IDs. If two developers normalize to the same name, they will share a bank; use unique developer names.
-- The current frontend displays Markdown as readable plain text. A Markdown renderer can be added later if desired.
-- The backend uses synchronous Hindsight SDK calls inside a threadpool so they do not block FastAPI's event loop.
-- Groq calls use JSON output mode and retry once if the request or response parsing fails.
+1. Open `Onboarding-Buddy/extension` in VS Code.
+2. Run `npm run compile`.
+3. Press `F5` to open the Extension Development Host.
+4. Click **Sign in & Sync Workspace** to synchronize all workspace files into MongoDB Atlas.
