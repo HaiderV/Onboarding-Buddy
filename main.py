@@ -155,17 +155,48 @@ async def verify_github_user(authorization: str = Header(...)) -> dict[str, Any]
     token = authorization.removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="GitHub bearer token required.")
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(
-            "https://api.github.com/user",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "Onboarding-Buddy-App",
-            },
+
+    # 1. First check if this token is an active local/browser session token in MongoDB
+    if mongo_db is not None:
+        try:
+            session = await mongo_db["sessions"].find_one({"token": token})
+            if session:
+                user = await mongo_db["users"].find_one(
+                    {"github_id": session["github_id"]},
+                    {"_id": 0},
+                )
+                if user:
+                    return user
+        except Exception:
+            pass
+
+    # 2. Otherwise query GitHub API with safe timeout and error handling
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Accept": "application/vnd.github+json",
+                    "User-Agent": "Onboarding-Buddy-App",
+                },
+            )
+    except httpx.TimeoutException:
+        print("[OAuth/Sync Warning] GitHub API connection timed out.")
+        raise HTTPException(
+            status_code=504,
+            detail="GitHub API timed out verifying credentials. Please check your network connection and retry.",
         )
+    except httpx.RequestError as exc:
+        print(f"[OAuth/Sync Warning] Failed to reach GitHub API: {exc}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unable to reach GitHub API: {str(exc)}",
+        )
+
     if response.status_code != 200:
         raise HTTPException(status_code=401, detail="Invalid GitHub session or token.")
+
     profile = response.json()
     github_id = str(profile.get("id", ""))
     if not github_id:
@@ -770,13 +801,8 @@ async def github_logout(request: Request, response: Response):
 
 
 @app.get("/api/dashboard")
-async def dashboard(request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-        await save_github_user(profile)
-    else:
-        profile = await profile_from_request(request)
+async def dashboard(request: Request):
+    profile = await profile_from_request(request)
 
     # Without logging in, don't let anyone enter the dashboard!
     if profile is None:
@@ -828,16 +854,10 @@ async def dashboard(request: Request, authorization: str | None = Header(None)):
 
 
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(payload: ChatRequest, request: Request, authorization: str | None = Header(None)):
+async def chat(payload: ChatRequest, request: Request):
     question = payload.question.strip()
     persona = payload.persona
-    profile: dict[str, Any] | None = None
-
-    if authorization:
-        profile = await verify_github_user(authorization)
-        await save_github_user(profile)
-    elif request.cookies.get("ob_session"):
-        profile = await profile_from_request(request)
+    profile = await profile_from_request(request)
 
     # Protected endpoint: user must be authenticated!
     if profile is None:
@@ -942,14 +962,8 @@ async def chat(payload: ChatRequest, request: Request, authorization: str | None
 async def sync_project(
     payload: ProjectSyncRequest,
     request: Request,
-    authorization: str | None = Header(None),
 ):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-        await save_github_user(profile)
-    else:
-        profile = await profile_from_request(request)
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Authentication required to sync projects.")
@@ -996,12 +1010,8 @@ async def sync_project(
 
 
 @app.get("/api/projects")
-async def list_projects(request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def list_projects(request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in to view synced projects.")
@@ -1022,12 +1032,8 @@ async def list_projects(request: Request, authorization: str | None = Header(Non
 
 
 @app.get("/api/projects/{project_id:path}/files")
-async def get_project_files(project_id: str, request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def get_project_files(project_id: str, request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in required.")
@@ -1091,12 +1097,8 @@ async def get_project_files(project_id: str, request: Request, authorization: st
 
 
 @app.delete("/api/projects/{project_id:path}")
-async def delete_project(project_id: str, request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def delete_project(project_id: str, request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in required.")
@@ -1133,12 +1135,8 @@ async def delete_project(project_id: str, request: Request, authorization: str |
 
 
 @app.get("/api/learning-hub")
-async def learning_hub_data(request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def learning_hub_data(request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in required.")
@@ -1192,12 +1190,8 @@ async def learning_hub_data(request: Request, authorization: str | None = Header
 
 
 @app.post("/api/quiz/generate")
-async def quiz_generate(payload: QuizGenerateRequest, request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def quiz_generate(payload: QuizGenerateRequest, request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in required to take a quiz.")
@@ -1233,12 +1227,8 @@ async def quiz_generate(payload: QuizGenerateRequest, request: Request, authoriz
 
 
 @app.post("/api/quiz/submit")
-async def quiz_submit(payload: QuizSubmitRequest, request: Request, authorization: str | None = Header(None)):
-    profile = None
-    if authorization:
-        profile = await verify_github_user(authorization)
-    else:
-        profile = await profile_from_request(request)
+async def quiz_submit(payload: QuizSubmitRequest, request: Request):
+    profile = await profile_from_request(request)
 
     if profile is None:
         raise HTTPException(status_code=401, detail="Sign in required.")
