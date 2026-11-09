@@ -1,0 +1,34 @@
+services:
+  - type: web
+    name: onboarding-buddy-backend
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: PORT
+        value: 8000
+      - key: MONGODB_DB_NAME
+        value: onboarding_buddy
+      - key: HINDSIGHT_BASE_URL
+        value: https://api.hindsight.vectorize.io
+      - key: GROQ_API_KEY
+        sync: false
+      - key: HINDSIGHT_API_KEY
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        sync: false
+
