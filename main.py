@@ -542,6 +542,25 @@ async def auth_me(request: Request, authorization: str | None = Header(None)):
     return {"authenticated": profile is not None, "user": profile}
 
 
+def set_session_cookie(response: Response, session_token: str):
+    is_https = FRONTEND_URL.startswith("https://") or os.getenv("ENVIRONMENT", "").lower() == "production"
+    response.set_cookie(
+        "ob_session",
+        session_token,
+        httponly=True,
+        samesite="none" if is_https else "lax",
+        secure=True if is_https else False,
+        max_age=60 * 60 * 24 * 30,
+    )
+
+def delete_session_cookie(response: Response):
+    is_https = FRONTEND_URL.startswith("https://") or os.getenv("ENVIRONMENT", "").lower() == "production"
+    response.delete_cookie(
+        "ob_session",
+        samesite="none" if is_https else "lax",
+        secure=True if is_https else False,
+    )
+
 @app.get("/api/auth/github/login")
 async def github_login():
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
@@ -662,13 +681,7 @@ async def github_callback(
         })
 
         response = RedirectResponse(url=target_url, status_code=302)
-        response.set_cookie(
-            "ob_session",
-            session_token,
-            httponly=True,
-            samesite="lax",
-            max_age=60 * 60 * 24 * 30,
-        )
+        set_session_cookie(response, session_token)
         return response
 
     except HTTPException:
@@ -693,13 +706,7 @@ async def token_login(payload: TokenLoginRequest, response: Response):
         "github_id": profile["github_id"],
         "created_at": datetime.now(timezone.utc),
     })
-    response.set_cookie(
-        "ob_session",
-        session_token,
-        httponly=True,
-        samesite="lax",
-        max_age=60 * 60 * 24 * 30,
-    )
+    set_session_cookie(response, session_token)
     return {"authenticated": True, "user": profile}
 
 
@@ -727,13 +734,7 @@ async def dev_login(payload: DevLoginRequest, response: Response):
         "github_id": profile["github_id"],
         "created_at": datetime.now(timezone.utc),
     })
-    response.set_cookie(
-        "ob_session",
-        session_token,
-        httponly=True,
-        samesite="lax",
-        max_age=60 * 60 * 24 * 30,
-    )
+    set_session_cookie(response, session_token)
     return {"authenticated": True, "user": profile}
 
 
@@ -742,7 +743,7 @@ async def github_logout(request: Request, response: Response):
     session_token = request.cookies.get("ob_session")
     if session_token and mongo_db is not None:
         await mongo_db["sessions"].delete_one({"token": session_token})
-    response.delete_cookie("ob_session")
+    delete_session_cookie(response)
     return {"authenticated": False}
 
 
