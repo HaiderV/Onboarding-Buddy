@@ -410,15 +410,64 @@ Return valid JSON with:
 """.strip()
 
 
+def extract_answer_data(text: str) -> dict[str, str]:
+    text = (text or "").strip()
+    # 1. Try parsing pure JSON
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return {
+                "answer": str(data.get("answer", text)),
+                "explained": str(data.get("explained", "General codebase question")),
+                "concepts_taught": str(data.get("concepts_taught", "None specified")),
+                "user_confused_by": str(data.get("user_confused_by", "None stated")),
+                "memory_summary": str(data.get("memory_summary", "")),
+            }
+    except Exception:
+        pass
+
+    # 2. Try regex extraction if JSON was wrapped in markdown
+    m = re.search(r'"answer"\s*:\s*"(.*?)"(?:\s*,\s*"explained"|\s*,\s*"concepts|\s*})', text, re.DOTALL)
+    if m:
+        try:
+            raw_val = f'"{m.group(1)}"'
+            ans = json.loads(raw_val)
+            return {
+                "answer": ans,
+                "explained": "Codebase question",
+                "concepts_taught": "Concepts explained",
+                "user_confused_by": "None stated",
+                "memory_summary": "",
+            }
+        except Exception:
+            pass
+
+    # 3. Clean markdown wrapper if present
+    clean_text = text
+    if clean_text.startswith("```json"):
+        clean_text = clean_text.removeprefix("```json").removesuffix("```").strip()
+    elif clean_text.startswith("```"):
+        clean_text = clean_text.removeprefix("```").removesuffix("```").strip()
+
+    return {
+        "answer": clean_text or "I couldn't create an answer.",
+        "explained": "Codebase discussion",
+        "concepts_taught": "Codebase patterns",
+        "user_confused_by": "None stated",
+        "memory_summary": "",
+    }
+
+
 def call_groq(system_prompt: str, question: str) -> dict[str, str]:
-    # Resilient model fallback: if on-demand model hits token/rate limits (413/429), try versatile/instant models
+    # Use models validated on this Groq account
     models_to_try = [GROQ_MODEL]
-    for fallback in ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
+    for fallback in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
         if fallback not in models_to_try:
             models_to_try.append(fallback)
 
     last_error = None
     for model_name in models_to_try:
+        # First attempt with JSON mode
         try:
             response = groq_client.chat.completions.create(
                 model=model_name,
@@ -427,25 +476,36 @@ def call_groq(system_prompt: str, question: str) -> dict[str, str]:
                     {"role": "user", "content": question},
                 ],
                 response_format={"type": "json_object"},
-                max_tokens=1024,
+                max_tokens=2048,
             )
-            content = response.choices[0].message.content or "{}"
-            data = json.loads(content)
-            return {
-                "answer": str(data.get("answer", "I couldn't create an answer.")),
-                "explained": str(data.get("explained", "General codebase question")),
-                "concepts_taught": str(data.get("concepts_taught", "None specified")),
-                "user_confused_by": str(data.get("user_confused_by", "None stated")),
-                "memory_summary": str(data.get("memory_summary", "")),
-            }
+            content = response.choices[0].message.content or ""
+            return extract_answer_data(content)
         except Exception as exc:
             last_error = exc
             err_str = str(exc).lower()
-            if "rate_limit" in err_str or "413" in err_str or "tokens" in err_str:
-                print(f"[Groq Info] Model {model_name} rate/token limited. Falling back to next model...")
+
+            # If JSON validation failed on Groq, retry without json_object constraint
+            if "json" in err_str or "validate" in err_str or "400" in err_str:
+                try:
+                    response = groq_client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": question},
+                        ],
+                        max_tokens=2048,
+                    )
+                    content = response.choices[0].message.content or ""
+                    return extract_answer_data(content)
+                except Exception as retry_exc:
+                    last_error = retry_exc
+                    err_str = str(retry_exc).lower()
+
+            if "rate_limit" in err_str or "413" in err_str or "tokens" in err_str or "tpm" in err_str:
+                print(f"[Groq Info] Model {model_name} rate/token limited. Trying fallback...")
                 continue
-            # If JSON decoding error, retry once
             continue
+
     raise RuntimeError(f"Groq request failed across models: {last_error}")
 
 
@@ -511,7 +571,10 @@ Return valid JSON with a single key "questions" containing a list of 3 items, ea
 - "answer_index": integer (0, 1, 2, or 3) indicating the correct option
 - "explanation": string explaining why this choice is correct according to the code
 """
-    models_to_try = [GROQ_MODEL, "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+    models_to_try = [GROQ_MODEL]
+    for fallback in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]:
+        if fallback not in models_to_try:
+            models_to_try.append(fallback)
     for model_name in models_to_try:
         try:
             response = groq_client.chat.completions.create(
