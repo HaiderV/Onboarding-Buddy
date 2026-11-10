@@ -612,6 +612,10 @@ def delete_session_cookie(response: Response):
         secure=True if is_https else False,
     )
 
+@app.head("/api/auth/github/login")
+async def github_login_head():
+    return Response(status_code=200)
+
 @app.get("/api/auth/github/login")
 async def github_login():
     if not GITHUB_CLIENT_ID or not GITHUB_CLIENT_SECRET:
@@ -1281,9 +1285,16 @@ if (DIST_DIR / "index.html").exists():
     app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
 
     @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
+    async def serve_spa(request: Request, full_path: str):
         if full_path.startswith("api/"):
             raise HTTPException(status_code=404, detail="Not found")
+        if not full_path and "code" in request.query_params:
+            return await github_callback(
+                code=request.query_params.get("code"),
+                state=request.query_params.get("state"),
+                error=request.query_params.get("error"),
+                error_description=request.query_params.get("error_description"),
+            )
         file_path = DIST_DIR / full_path
         if file_path.exists() and file_path.is_file():
             return FileResponse(file_path)
@@ -1292,5 +1303,12 @@ else:
     app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
     @app.get("/")
-    async def home():
+    async def home(request: Request):
+        if "code" in request.query_params:
+            return await github_callback(
+                code=request.query_params.get("code"),
+                state=request.query_params.get("state"),
+                error=request.query_params.get("error"),
+                error_description=request.query_params.get("error_description"),
+            )
         return FileResponse(FRONTEND_DIR / "index.html")
